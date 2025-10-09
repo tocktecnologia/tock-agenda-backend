@@ -2,7 +2,7 @@
 
 # Configurações
 LOGFLARE_HOST="http://5.161.187.243:4000"
-ENDPOINT_UUID="65b0543e-3a00-4501-be06-487aec504126"
+ENDPOINT_UUID="6e722371-a70b-4093-a42e-b22d2100985a"
 
 
 # Carregue seu token privado do .env ou defina aqui
