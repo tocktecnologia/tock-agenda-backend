@@ -12,6 +12,10 @@ fi
 echo "Stopping and removing all containers..."
 docker compose -f docker-compose.yml -f ./dev/docker-compose.dev.yml down -v --remove-orphans
 
+
+echo "up s3 buckets."
+# docker compose -f docker-compose.yml -f docker-compose.s3.yml up
+
 echo "Cleaning up bind-mounted directories..."
 BIND_MOUNTS=(
   "./volumes/db/data"

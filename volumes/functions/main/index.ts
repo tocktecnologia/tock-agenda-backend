@@ -1,10 +1,13 @@
 import { serve } from 'https://deno.land/std@0.131.0/http/server.ts'
 import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts'
+import { getAuth } from "npm:firebase-admin@^12.0.0/auth";
+import { getFirestore } from "npm:firebase-admin/firestore";
 
 console.log('main function started')
 
 const JWT_SECRET = Deno.env.get('JWT_SECRET')
-const VERIFY_JWT = Deno.env.get('VERIFY_JWT') === 'true'
+const VERIFY_JWT = Deno.env.get('FUNCTIONS_VERIFY_JWT') === 'true'
+const VERIFY_JWT_FIREBASE = false
 
 function getAuthToken(req: Request) {
   const authHeader = req.headers.get('authorization')
@@ -30,12 +33,91 @@ async function verifyJWT(jwt: string): Promise<boolean> {
   return true
 }
 
+// Função para verificar o token do Firebase usando REST API
+async function verifyJWTFirebase(idToken: string) {
+
+  try {
+
+    // Inicializa o Firebase Admin
+    const firebaseConfig = {
+      apiKey: "AIzaSyCQBiazeXThblSXEyP8tlOxjpu-mfGq76o",
+      authDomain: "agenda-tock.firebaseapp.com",
+      projectId: "agenda-tock",
+      storageBucket: "agenda-tock.firebasestorage.app",
+      messagingSenderId: "282314346925",
+      appId: "1:282314346925:web:b4207fbae88f098bfe1124",
+      measurementId: "G-X3GPCEJHYQ"
+    };
+
+    // var app;
+    // if (!getApps().length) {
+    //   // var app = initializeApp(firebaseConfig);
+    //   // const serviceAccount = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT_KEY")!);
+    //   // app = initializeApp({ credential: cert(serviceAccount) });
+    // }
+
+    const serviceAccount = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT_KEY")!);
+    var app = initializeApp({ credential: cert(serviceAccount) });
+
+    // if (!getApps().length) {
+    // const serviceAccount = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT_KEY")!);
+    // const app = initializeApp({ credential: cert(serviceAccount) });
+    // }
+
+    const auth = getAuth(app);
+
+    const decodedToken = await auth.verifyIdToken(idToken);
+
+    // // Firestore reference
+    // const db = getFirestore();
+
+    // // 🔎 Buscar documento
+    // const docRef = db.collection("users").doc(decodedToken.uid);
+    // const snapshot = await docRef.get();
+
+    // if (!snapshot.exists) {
+    //   return { msg: "User not found" };
+    // }
+
+    return true;
+
+    return new Response(JSON.stringify({ token: idToken, decodedToken: decodedToken }), {
+      status: 202,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+
+
+    const uid = decodedToken.uid;
+    // Token is valid, proceed with your logic using the uid
+
+    return new Response(JSON.stringify({ token: idToken, decodedToken: decodedToken, uid: uid }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+
+  } catch (error) {
+    console.error("Error verifying Firebase ID token:", error);
+    return false;
+
+    return new Response(JSON.stringify({
+      error: error
+    }), { status: 403 });
+  }
+}
+
+
+
+
 serve(async (req: Request) => {
-  if (req.method !== 'OPTIONS' && VERIFY_JWT) {
+  if (req.method !== 'OPTIONS' &&  /*VERIFY_JWT*/ VERIFY_JWT_FIREBASE) {
     try {
       const token = getAuthToken(req)
-      const isValidJWT = await verifyJWT(token)
+      // const isValidJWT = await verifyJWT(token)
+      const isValidJWT = await verifyJWTFirebase(token)
 
+      console.log("isValidJWTFirebase: ", isValidJWT)
       if (!isValidJWT) {
         return new Response(JSON.stringify({ msg: 'Invalid JWT' }), {
           status: 401,
