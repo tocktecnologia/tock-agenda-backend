@@ -42,11 +42,11 @@ serve(async (req) => {
         const body: WorkerRequest = await req.json();
 
         // Validação dos campos obrigatórios (apenas email e business_id)
-        if (!body.email || !body.business_id) {
+        if (!body.telefone || !body.business_id) {
             return new Response(
                 JSON.stringify({
                     error: "Campos obrigatórios faltando",
-                    required: ["email", "business_id"],
+                    required: ["telefone", "business_id"],
                 }),
                 {
                     status: 400,
@@ -67,16 +67,16 @@ serve(async (req) => {
         }
 
         // Validação de email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(body.email)) {
-            return new Response(
-                JSON.stringify({ error: "Email inválido" }),
-                {
-                    status: 400,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" },
-                }
-            );
-        }
+        // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // if (!emailRegex.test(body.email)) {
+        //     return new Response(
+        //         JSON.stringify({ error: "Email inválido" }),
+        //         {
+        //             status: 400,
+        //             headers: { ...corsHeaders, "Content-Type": "application/json" },
+        //         }
+        //     );
+        // }
 
         // Verificar se o business existe
         const { data: business, error: businessError } = await supabase
@@ -114,12 +114,13 @@ serve(async (req) => {
 
         // Inserir trabalhador
         const emailSplitted = body.email.trim().toLowerCase().split("@")[0];
+        const telefoneFormatado: string = body.telefone ? body.telefone.replace(/\D/g, '') : "";
         const { data, error } = await supabase
             .from("trabalhadores")
             .insert({
                 nome: body.nome ? body.nome.trim() : emailSplitted,
                 email: body.email.trim().toLowerCase(),
-                telefone: body.telefone ? body.telefone.trim() : "",
+                telefone: telefoneFormatado,
                 ativo: body.ativo ?? true,
                 business_id: body.business_id,
             })

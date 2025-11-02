@@ -192,10 +192,10 @@ CREATE TABLE public.notifications (
   title VARCHAR(200) NOT NULL,
   message TEXT NOT NULL,
   read BOOLEAN DEFAULT false,
+  email TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (business_id) REFERENCES business(id) ON DELETE CASCADE
 );
-
 COMMENT ON TABLE notifications IS 'Notificações da empresa/negócio';
 COMMENT ON COLUMN notifications.title IS 'Título da notificação';
 COMMENT ON COLUMN notifications.message IS 'Mensagem/conteúdo da notificação';
