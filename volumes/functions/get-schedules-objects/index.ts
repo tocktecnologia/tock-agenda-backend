@@ -108,7 +108,8 @@ serve(async (req) => {
                     id,
                     nome,
                     email,
-                    telefone
+                    telefone,
+                    ativo
                 )
             `)
             .eq("business_id", business_id)

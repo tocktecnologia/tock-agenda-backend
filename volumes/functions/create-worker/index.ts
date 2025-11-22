@@ -12,6 +12,7 @@ interface WorkerRequest {
     telefone?: string | null;
     ativo?: boolean;
     business_id: string;
+    position?: string | null;
     services?: (string | number)[];
 }
 
@@ -30,7 +31,7 @@ serve(async (req) => {
         // Validar método HTTP
         if (req.method !== "POST") {
             return new Response(
-                JSON.stringify({ error: "Método não permitido. Use POST." }),
+                JSON.stringify({ message: "Método não permitido. Use POST." }),
                 {
                     status: 405,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -58,7 +59,7 @@ serve(async (req) => {
         // Validação do array de serviços (se fornecido)
         if (body.services && !Array.isArray(body.services)) {
             return new Response(
-                JSON.stringify({ error: "O campo 'services' deve ser um array de IDs ou nomes" }),
+                JSON.stringify({ message: "O campo 'services' deve ser um array de IDs ou nomes" }),
                 {
                     status: 400,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -70,7 +71,7 @@ serve(async (req) => {
         // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         // if (!emailRegex.test(body.email)) {
         //     return new Response(
-        //         JSON.stringify({ error: "Email inválido" }),
+        //         JSON.stringify({ message: "Email inválido" }),
         //         {
         //             status: 400,
         //             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,7 +88,7 @@ serve(async (req) => {
 
         if (businessError || !business) {
             return new Response(
-                JSON.stringify({ error: "Business não encontrado" }),
+                JSON.stringify({ message: "Business não encontrado" }),
                 {
                     status: 404,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -95,22 +96,22 @@ serve(async (req) => {
             );
         }
 
-        // Verificar se o email já existe
-        const { data: existingWorker } = await supabase
-            .from("trabalhadores")
-            .select("id")
-            .eq("email", body.email)
-            .single();
+        // // Verificar se o email já existe
+        // const { data: existingWorker } = await supabase
+        //     .from("trabalhadores")
+        //     .select("id")
+        //     .eq("email", body.email)
+        //     .single();
 
-        if (existingWorker) {
-            return new Response(
-                JSON.stringify({ error: "Email já cadastrado" }),
-                {
-                    status: 409,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" },
-                }
-            );
-        }
+        // if (existingWorker) {
+        //     return new Response(
+        //         JSON.stringify({ message: "Email já cadastrado" }),
+        //         {
+        //             status: 409,
+        //             headers: { ...corsHeaders, "Content-Type": "application/json" },
+        //         }
+        //     );
+        // }
 
         // Inserir trabalhador
         const emailSplitted = body.email.trim().toLowerCase().split("@")[0];
@@ -119,10 +120,11 @@ serve(async (req) => {
             .from("trabalhadores")
             .insert({
                 nome: body.nome ? body.nome.trim() : emailSplitted,
-                email: body.email.trim().toLowerCase(),
+                email: body.email ? body.email.trim().toLowerCase() : "",
                 telefone: telefoneFormatado,
                 ativo: body.ativo ?? true,
                 business_id: body.business_id,
+                position: body.position ? body.position : "",
             })
             .select()
             .single();
@@ -130,7 +132,7 @@ serve(async (req) => {
         if (error) {
             console.error("Erro ao criar trabalhador:", error);
             return new Response(
-                JSON.stringify({ error: "Erro ao criar trabalhador", details: error.message }),
+                JSON.stringify({ message: "Erro ao criar trabalhador", details: error.message }),
                 {
                     status: 500,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -184,7 +186,7 @@ serve(async (req) => {
                 await supabase.from("trabalhadores").delete().eq("id", data.id);
 
                 return new Response(
-                    JSON.stringify({ error: "Erro ao validar serviços", details: servicesError.message }),
+                    JSON.stringify({ message: "Erro ao validar serviços", details: servicesError.message }),
                     {
                         status: 500,
                         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -233,7 +235,7 @@ serve(async (req) => {
                 await supabase.from("trabalhadores").delete().eq("id", data.id);
 
                 return new Response(
-                    JSON.stringify({ error: "Erro ao vincular serviços", details: linkError.message }),
+                    JSON.stringify({ message: "Erro ao vincular serviços", details: linkError.message }),
                     {
                         status: 500,
                         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -287,7 +289,7 @@ serve(async (req) => {
     } catch (error) {
         console.error("Erro na função:", error);
         return new Response(
-            JSON.stringify({ error: "Erro interno do servidor", details: error.message }),
+            JSON.stringify({ message: "Erro interno do servidor", details: error.message }),
             {
                 status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
