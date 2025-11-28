@@ -95,10 +95,24 @@ serve(async (req) => {
         let confirmadoPorFazer = 0;
         let cancelado = 0;
 
+        // Objeto para contar agendamentos por dia
+        const agendamentosPorDia: { [key: string]: number } = {};
+
         agendamentos?.forEach((agendamento) => {
             const dataAgendamento = agendamento.data_agendamento;
             const horaInicio = agendamento.hora_inicio;
             const status = agendamento.status;
+
+            // Extrair o dia da data (formato YYYY-MM-DD)
+            const dia = dataAgendamento.split('-')[2];
+            const diaNumero = parseInt(dia, 10).toString(); // Remove zeros à esquerda
+
+            // Contar agendamentos por dia
+            if (agendamentosPorDia[diaNumero]) {
+                agendamentosPorDia[diaNumero]++;
+            } else {
+                agendamentosPorDia[diaNumero] = 1;
+            }
 
             if (status === "cancelado") {
                 cancelado++;
@@ -123,13 +137,21 @@ serve(async (req) => {
 
         const totalConfirmed = confirmadoPassado + confirmadoPorFazer;
 
+        // Converter o objeto em array de objetos com label e value
+        const agendamentosMes = Object.keys(agendamentosPorDia)
+            .sort((a, b) => parseInt(a) - parseInt(b)) // Ordenar por dia
+            .map(dia => ({
+                label: dia,
+                value: agendamentosPorDia[dia]
+            }));
+
         // Retornar a resposta no formato solicitado
         return new Response(
             JSON.stringify({
                 reference_year: referenceYear,
                 reference_month: referenceMonth,
                 total_confirmed: totalConfirmed,
-                horarioAtual: hoje.toTimeString(),
+                agendamentosMes: agendamentosMes,
                 chartSchedule: [
                     {
                         label: "Feitos",
