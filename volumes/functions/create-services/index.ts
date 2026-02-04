@@ -30,7 +30,7 @@ serve(async (req) => {
         // Validar método HTTP
         if (req.method !== "POST") {
             return new Response(
-                JSON.stringify({ error: "Método não permitido. Use POST." }),
+                JSON.stringify({ message: "Método não permitido. Use POST." }),
                 {
                     status: 405,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -45,7 +45,7 @@ serve(async (req) => {
         if (!Array.isArray(body)) {
             return new Response(
                 JSON.stringify({
-                    error: "O body deve ser um array de serviços",
+                    message: "O body deve ser um array de serviços",
                 }),
                 {
                     status: 400,
@@ -58,7 +58,7 @@ serve(async (req) => {
         if (body.length === 0) {
             return new Response(
                 JSON.stringify({
-                    error: "O array de serviços não pode estar vazio",
+                    message: "O array de serviços não pode estar vazio",
                 }),
                 {
                     status: 400,
@@ -77,7 +77,7 @@ serve(async (req) => {
             if (!service.nome || !service.duracao_minutos || service.preco === undefined || service.preco === null || !service.business_id) {
                 errors.push({
                     index,
-                    error: "Campos obrigatórios faltando: nome, duracao_minutos, preco, business_id",
+                    message: "Campos obrigatórios faltando: nome, duracao_minutos, preco, business_id",
                 });
                 return;
             }
@@ -86,7 +86,7 @@ serve(async (req) => {
             if (typeof service.duracao_minutos !== "number" || service.duracao_minutos <= 0) {
                 errors.push({
                     index,
-                    error: "A duração deve ser um número maior que zero",
+                    message: "A duração deve ser um número maior que zero",
                 });
                 return;
             }
@@ -94,7 +94,7 @@ serve(async (req) => {
             if (typeof service.preco !== "number" || service.preco < 0) {
                 errors.push({
                     index,
-                    error: "O preço deve ser um número maior ou igual a zero",
+                    message: "O preço deve ser um número maior ou igual a zero",
                 });
                 return;
             }
@@ -102,7 +102,7 @@ serve(async (req) => {
             if (service.nome.trim().length === 0) {
                 errors.push({
                     index,
-                    error: "O nome não pode estar vazio",
+                    message: "O nome não pode estar vazio",
                 });
                 return;
             }
@@ -115,7 +115,7 @@ serve(async (req) => {
             return new Response(
                 JSON.stringify({
                     error: "Erros de validação encontrados",
-                    details: errors,
+                    message: errors,
                 }),
                 {
                     status: 400,
@@ -132,7 +132,7 @@ serve(async (req) => {
 
         if (businessError) {
             return new Response(
-                JSON.stringify({ error: "Erro ao verificar business", details: businessError.message }),
+                JSON.stringify({ error: "Erro ao verificar business", message: businessError.message }),
                 {
                     status: 500,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -146,7 +146,7 @@ serve(async (req) => {
         if (invalidBusinessIds.length > 0) {
             return new Response(
                 JSON.stringify({
-                    error: "Business não encontrados",
+                    message: "Business não encontrados",
                     invalid_business_ids: invalidBusinessIds,
                 }),
                 {
@@ -155,6 +155,58 @@ serve(async (req) => {
                 }
             );
         }
+
+        // Obter emails dos businesses
+        const { data: businessData, error: businessDataError } = await supabase
+            .from("business")
+            .select("id, email")
+            .in("id", Array.from(businessIds));
+
+        if (businessDataError) {
+            return new Response(
+                JSON.stringify({ error: "Erro ao obter dados dos business", message: businessDataError.message }),
+                {
+                    status: 500,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                }
+            );
+        }
+
+        const businessEmailMap = new Map(businessData.map(b => [b.id, b.email]));
+
+        // Obter trabalhadores principais
+        const emails = Array.from(businessEmailMap.values());
+        const { data: workers, error: workersError } = await supabase
+            .from("trabalhadores")
+            .select("id, email")
+            .in("email", emails);
+
+        if (workersError) {
+            return new Response(
+                JSON.stringify({ error: "Erro ao obter trabalhadores", message: workersError.message }),
+                {
+                    status: 500,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                }
+            );
+        }
+
+        const workerMap = new Map(workers.map(w => [w.email, w.id]));
+
+        // Verificar se todos os businesses têm trabalhador principal
+        // const businessesWithoutWorker = Array.from(businessIds).filter(id => !workerMap.has(businessEmailMap.get(id)!));
+        // if (businessesWithoutWorker.length > 0) {
+        //     return new Response(
+        //         JSON.stringify({
+        //             message: "Business sem trabalhador principal",
+        //             businesses_without_worker: businessesWithoutWorker,
+        //         }),
+        //         {
+        //             status: 400,
+        //             headers: { ...corsHeaders, "Content-Type": "application/json" },
+        //         }
+        //     );
+        // }
 
         // Verificar duplicatas no array enviado
         const serviceNames = new Map<string, number[]>();
@@ -181,7 +233,7 @@ serve(async (req) => {
         if (duplicatesInRequest.length > 0) {
             return new Response(
                 JSON.stringify({
-                    error: "Serviços duplicados encontrados no array enviado",
+                    message: "Serviços duplicados encontrados no array enviado",
                     duplicates: duplicatesInRequest,
                 }),
                 {
@@ -215,7 +267,7 @@ serve(async (req) => {
         if (conflicts.length > 0) {
             return new Response(
                 JSON.stringify({
-                    error: "Alguns serviços já existem no banco de dados",
+                    message: "Alguns serviços já existem no banco de dados",
                     conflicts,
                 }),
                 {
@@ -244,13 +296,37 @@ serve(async (req) => {
         if (error) {
             console.error("Erro ao criar serviços:", error);
             return new Response(
-                JSON.stringify({ error: "Erro ao criar serviços", details: error.message }),
+                JSON.stringify({ error: "Erro ao criar serviços", message: error.message }),
                 {
                     status: 500,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
                 }
             );
         }
+
+        // // Vincular serviços aos trabalhadores principais
+        // const linksToInsert = data.map(insertedService => {
+        //     return {
+        //         trabalhador_id: workerMap.get(businessEmailMap.get(insertedService.business_id)!),
+        //         servico_id: insertedService.id,
+        //         business_id: insertedService.business_id
+        //     };
+        // });
+
+        // const { error: linkError } = await supabase
+        //     .from("trabalhador_servico")
+        //     .insert(linksToInsert);
+
+        // if (linkError) {
+        //     console.error("Erro ao vincular serviços aos trabalhadores:", linkError);
+        //     return new Response(
+        //         JSON.stringify({ error: "Erro ao vincular serviços aos trabalhadores", message: linkError.message }),
+        //         {
+        //             status: 500,
+        //             headers: { ...corsHeaders, "Content-Type": "application/json" },
+        //         }
+        //     );
+        // }
 
         // Resposta de sucesso
         return new Response(
@@ -268,7 +344,7 @@ serve(async (req) => {
     } catch (error) {
         console.error("Erro na função:", error);
         return new Response(
-            JSON.stringify({ error: "Erro interno do servidor", details: error.message }),
+            JSON.stringify({ error: "Erro interno do servidor", message: error.message }),
             {
                 status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
